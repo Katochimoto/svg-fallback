@@ -19,7 +19,8 @@ var path = require('path'),
     open = require('open'),
     svgmodify = require('svg-modify'),
     svgflback = require('./lib/svgflback'),
-    simsort = require('./lib/simsort');
+    simsort = require('./lib/simsort'),
+    engine = require('pixelsmith');
 
 module.exports = function(grunt) {
 
@@ -172,7 +173,8 @@ module.exports = function(grunt) {
                 'padding': options.padding || 10,
                 'algorithmOpts': options.algorithmOpts || {},
                 'engineOpts': options.engineOpts || {},
-                'exportOpts': imgOpts || {}
+                'exportOpts': imgOpts || {},
+                'engine': engine
             };
 
             spritesmith(spritesmithParams, function(err, result) {
