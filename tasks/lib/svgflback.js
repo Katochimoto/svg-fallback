@@ -345,7 +345,9 @@ svgflback.createSvgLib = function(sources) {
             "styles": svgSymbols[key].styles
         }); // for index file
 
-        grunt.file.write(destSvg, symbolsFile, "utf8");
+        grunt.file.write(destSvg, symbolsFile, {
+            encoding: 'utf8'
+        });
 
         // grunt.log.ok(" - " + destSvg);
     }
