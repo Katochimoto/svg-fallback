@@ -11,7 +11,7 @@
 var path = require('path'),
     fs = require('fs'),
     svgToPng = require('svg-to-png'),
-    spritesmith = require('spritesmith'),
+    Spritesmith = require('spritesmith'),
     mustache = require('mustache'),
     rmdir = require('rimraf'),
     util = require('util'),
@@ -19,7 +19,8 @@ var path = require('path'),
     open = require('open'),
     svgmodify = require('svg-modify'),
     svgflback = require('./lib/svgflback'),
-    simsort = require('./lib/simsort');
+    simsort = require('./lib/simsort'),
+    engine = require('pixelsmith');
 
 module.exports = function(grunt) {
 
@@ -35,14 +36,15 @@ module.exports = function(grunt) {
             folder = this.data.folder,
             options = this.options(),
             debug = options.debug,
+            pngfallback = typeof options.pngfallback === 'boolean' ? options.pngfallback : true,
             svgclass = options.svgclass ? options.svgclass : 'svg',
             svgstyle  = options.svgstyle ? options.svgstyle : '',
             usei8class = options.usei8class ? options.usei8class : false,
-            tempFolder = 'temp/',
-            svgResizedFolder = tempFolder + 'svgResized/',
-            svgPreparedFolder = tempFolder + 'svgPrepared/',
-            svgProcessedFolder = tempFolder + 'svgProcessed/',
-            pngFolder = tempFolder + 'png/',
+            tempFolder = path.resolve(currentFolder, '../temp'),
+            svgResizedFolder = path.join(tempFolder, 'svgResized/'),
+            svgPreparedFolder = path.join(tempFolder, 'svgPrepared/'),
+            svgProcessedFolder = path.join(tempFolder, 'svgProcessed/'),
+            pngFolder = path.join(tempFolder, 'png/'),
             showPngCss = '',
             imgOpts = {
                 'format': 'png'
@@ -107,8 +109,11 @@ module.exports = function(grunt) {
             grunt.log.error('SVG-files for converting to PNG not found.');
             return;
         }
+        //return null;
 
-        createPngByFoldersAsync();
+        if (pngfallback) {
+            createPngByFoldersAsync();
+        }
 
         // 4. Create sprite from png, write CSS
         //------------------------------------------
@@ -123,14 +128,14 @@ module.exports = function(grunt) {
         function createPngByFoldersAsync() {
 
             var svgSrcFolders = fs.readdirSync(svgProcessedFolder);
-            async.eachSeries(svgSrcFolders, convertToPng, convertToPngCallback);
+            async.forEachOf(svgSrcFolders, convertToPng, convertToPngCallback);
         }
 
         /**
          * @param {string} folderName
          * @param {Function} callback
          */
-        function convertToPng(folderName, callback) {
+        function convertToPng(folderName, key, callback) {
 
             var srcSvgFolder = svgProcessedFolder + folderName;
             var destPngFolder = pngFolder + folderName;
@@ -152,7 +157,7 @@ module.exports = function(grunt) {
         /**
          * Create sprite from PNGs
          */
-        function createSpriteAsync(folder, callback) {
+        function createSpriteAsync(folder, key, callback) {
 
             var srcPngFolder = pngFolder + folder;
             var pngFiles = grunt.file.expand(srcPngFolder + '/*.png');
@@ -168,10 +173,11 @@ module.exports = function(grunt) {
                 'padding': options.padding || 10,
                 'algorithmOpts': options.algorithmOpts || {},
                 'engineOpts': options.engineOpts || {},
-                'exportOpts': imgOpts || {}
+                'exportOpts': imgOpts || {},
+                'engine': engine
             };
 
-            spritesmith(spritesmithParams, function(err, result) {
+            Spritesmith.run(spritesmithParams, function(err, result) {
                 if (err) {
                     callback('FOLDER NOT PROCESSED: ' + srcPngFolder);
                     return;
@@ -204,7 +210,7 @@ module.exports = function(grunt) {
 
             grunt.log.ok('2. Create PNG-sprite and CSS...');
 
-            async.eachSeries(spriteSrcFolders, createSpriteAsync, createSpriteCallback);
+            async.forEachOf(spriteSrcFolders, createSpriteAsync, createSpriteCallback);
         }
 
         /**
@@ -443,7 +449,9 @@ module.exports = function(grunt) {
             };
 
             var outputIndex = mustache.render(indexTemplate, indexData);
-            grunt.file.write(destIndex, outputIndex, 'utf8');
+            grunt.file.write(destIndex, outputIndex, {
+                encoding: 'utf8'
+            });
 
             open(destIndex);
 
